@@ -17,7 +17,8 @@ Thumbs.db
 # Project specific
 memory/
 
-# Ignore all markdown files (as requested)
+# Ignore all markdown files except README.md
 *.md
 **/*.md
 .gsd/**/*.md
+!README.md
