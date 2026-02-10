@@ -51,9 +51,23 @@ npx tsx src/scripts/test-tools.ts
 
 To use Context Echo with a local MCP client, you need to point the client to the compiled `dist/index.js` file using absolute paths.
 
-### Standard Configuration
+### SSE Configuration (Port 3000)
 
-In your client's MCP settings (e.g., `claude_desktop_config.json`), add:
+Your client can connect to the server via SSE:
+
+```json
+{
+  "mcpServers": {
+    "context-echo": {
+      "url": "http://localhost:3000/sse"
+    }
+  }
+}
+```
+
+### Legacy Stdio Configuration
+
+If you still wish to use stdio (ensure you revert to `StdioServerTransport` in `src/index.ts` first):
 
 ```json
 {
@@ -69,10 +83,10 @@ In your client's MCP settings (e.g., `claude_desktop_config.json`), add:
 ### Running with TOME
 
 1. Ensure the project is built: `npm run build`.
-2. In TOME, add a new MCP server.
-3. Select "Stdio" transport.
-4. Set Command to `node`.
-5. Set Arguments to the absolute path of `dist/index.js`.
+2. Start the server: `npm start` (listens on port 3000).
+3. In TOME, add a new MCP server.
+4. Select **SSE** transport.
+5. Set the URL to `http://localhost:3000/sse`.
 
 ### Running with OpenCode
 

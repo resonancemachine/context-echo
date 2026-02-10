@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { loadGraph, saveGraph } from "./storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
-import { z } from "zod";
+import http from "node:http";
+import url from "node:url";
 
 const server = new Server(
     {
@@ -157,16 +158,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 });
 
-/**
- * Start the server.
- */
-async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Context Echo MCP Server running on stdio");
-}
+const port = 3000;
+let transport: SSEServerTransport | null = null;
 
-main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
+const httpServer = http.createServer(async (req, res) => {
+    const parsedUrl = url.parse(req.url || "", true);
+
+    if (req.method === "GET" && parsedUrl.pathname === "/sse") {
+        transport = new SSEServerTransport("/messages", res);
+        await server.connect(transport);
+        return;
+    }
+
+    if (req.method === "POST" && parsedUrl.pathname === "/messages") {
+        if (!transport) {
+            res.writeHead(400);
+            res.end("Not connected");
+            return;
+        }
+        await transport.handlePostMessage(req, res);
+        return;
+    }
+
+    res.writeHead(404);
+    res.end("Not Found");
+});
+
+httpServer.listen(port, () => {
+    console.error(`Context Echo MCP Server running on SSE at http://localhost:${port}/sse`);
 });
