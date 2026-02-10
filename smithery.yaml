@@ -1,0 +1,64 @@
+version: "1.0"
+tools:
+  - name: memory.add
+    description: Add an entity, relation, or fact to the user's knowledge graph.
+    inputSchema:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: The ID of the user whose memory to update.
+        entity:
+          $ref: "#/definitions/Entity"
+        relation:
+          $ref: "#/definitions/Relation"
+        fact:
+          $ref: "#/definitions/Fact"
+    required: [userId]
+
+  - name: memory.query
+    description: Query the user's knowledge graph for relevant context.
+    inputSchema:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: The ID of the user whose memory to query.
+        query:
+          type: string
+          description: The query string to search for.
+    required: [userId, query]
+
+  - name: memory.summarize
+    description: Summarize the user's knowledge graph or a specific portion of it.
+    inputSchema:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: The ID of the user whose memory to summarize.
+    required: [userId]
+
+definitions:
+  Entity:
+    type: object
+    properties:
+      name: { type: string }
+      type: { type: string }
+      metadata: { type: object }
+    required: [name, type]
+  Relation:
+    type: object
+    properties:
+      source: { type: string }
+      target: { type: string }
+      type: { type: string }
+      weight: { type: number }
+    required: [source, target, type]
+  Fact:
+    type: object
+    properties:
+      content: { type: string }
+      confidence: { type: number }
+      timestamp: { type: string }
+    required: [content, confidence, timestamp]
