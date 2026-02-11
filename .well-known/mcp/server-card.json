@@ -1,0 +1,12 @@
+{
+  "serverInfo": {
+    "name": "context-echo",
+    "version": "1.0.0",
+    "description": "Store user context as a structured knowledge graph in MCP memory JSON, and let tools query or update it over time."
+  },
+  "runtime": {
+    "type": "node", 
+    "command": "npx",
+    "args": ["-y", "@resonance/context-echo@latest"]
+  }
+}
