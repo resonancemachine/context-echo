@@ -1,7 +1,6 @@
 {
   "name": "context-echo",
   "version": "1.0.0",
-  "module": "./src/index.ts",
   "type": "module",
   "scripts": {
     "build": "tsc",
@@ -13,9 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@hono/node-server": "^1.19.9",
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "hono": "^4.11.9",
     "zod": "^4.3.6"
   },
   "devDependencies": {
