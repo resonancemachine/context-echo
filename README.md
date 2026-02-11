@@ -51,23 +51,9 @@ npx tsx src/scripts/test-tools.ts
 
 To use Context Echo with a local MCP client, you need to point the client to the compiled `dist/index.js` file using absolute paths.
 
-### SSE Configuration (Port 3000)
+### Standard Configuration
 
-Your client can connect to the server via SSE:
-
-```json
-{
-  "mcpServers": {
-    "context-echo": {
-      "url": "http://localhost:3000/sse"
-    }
-  }
-}
-```
-
-### Legacy Stdio Configuration
-
-If you still wish to use stdio (ensure you revert to `StdioServerTransport` in `src/index.ts` first):
+In your client's MCP settings (e.g., `claude_desktop_config.json`), add:
 
 ```json
 {
@@ -83,10 +69,10 @@ If you still wish to use stdio (ensure you revert to `StdioServerTransport` in `
 ### Running with TOME
 
 1. Ensure the project is built: `npm run build`.
-2. Start the server: `npm start` (listens on port 3000).
-3. In TOME, add a new MCP server.
-4. Select **SSE** transport.
-5. Set the URL to `http://localhost:3000/sse`.
+2. In TOME, add a new MCP server.
+3. Select "Stdio" transport.
+4. Set Command to `node`.
+5. Set Arguments to the absolute path of `dist/index.js`.
 
 ### Running with OpenCode
 
@@ -103,14 +89,34 @@ This will launch an interactive guide. When prompted for the local server detail
 
 ## Smithery Integration
 
-Context Echo includes a `smithery.yaml` file for standardized tool definitions. To use with Smithery-compatible tools, you can point them to this project directory.
+Context Echo is ready to be used with [Smithery](https://smithery.ai).
 
-### Packaging
+### Local Development
 
-The project is already configured for Smithery. You can use the Smithery CLI to manage or deploy the server:
+To run the server locally with hot-reloading and a testing interface:
 
 ```bash
-npx smithery@latest run . --userId "some-unique-id"
+npx @smithery/cli dev
+```
+
+### Publishing to Smithery
+
+To publish your MCP server to the Smithery registry so others can discover and install it:
+
+1.  **Prepare a Dockerfile**: Smithery uses Docker to build and run your server in the cloud. Create a `Dockerfile` in the root (if not already present).
+2.  **Push to GitHub**: Ensure your project is pushed to a public GitHub repository.
+3.  **Deploy from Smithery Dashboard**:
+    - Go to [smithery.ai/deploy](https://smithery.ai/deploy).
+    - Select **"From GitHub"**.
+    - Choose your repository and follow the configuration steps.
+4.  **CLI Deployment**: Alternatively, you can use the CLI:
+    ```bash
+    npx @smithery/cli deploy
+    ```
+
+Once published, users can install your server globally using:
+```bash
+npx @smithery/cli install context-echo --client claude
 ```
 
 ## Project Structure
