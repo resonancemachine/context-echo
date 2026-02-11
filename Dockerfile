@@ -20,6 +20,3 @@ RUN npm run build
 # The Docker image will run the compiled JavaScript
 # Use the direct path to the compiled file
 ENTRYPOINT ["node", "dist/index.js"]
-
-# Expose the port (MCP SSE usually uses 3000 in this project)
-EXPOSE 3000
