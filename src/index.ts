@@ -163,7 +163,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
  */
 async function main() {
     const app = express();
-    app.use(cors());
+    app.use(cors({
+        exposedHeaders: ["mcp-session-id"],
+    }));
     app.use(express.json());
 
     const transport = new StreamableHTTPServerTransport();
@@ -179,13 +181,13 @@ async function main() {
     // Serve static files from the .well-known directory
     app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
 
+    await server.connect(transport);
+
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
         console.error(`MCP endpoint: http://localhost:${port}/mcp`);
     });
-
-    await server.connect(transport);
 }
 
 // Helper to detect if this is the main module in a way that's safe for both ESM and CJS
