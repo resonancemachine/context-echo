@@ -115,7 +115,7 @@ async function main() {
     app.use(express.json());
     // In-memory store for sessions
     const sessions = new Map();
-    app.all("/mcp*", async (req, res) => {
+    app.all("/mcp:path*", async (req, res) => {
         console.error(`[MCP] Incoming Request: ${req.method} ${req.url}`);
         const sessionId = (req.headers["mcp-session-id"] || req.query["sessionId"]);
         let session;
