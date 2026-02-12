@@ -165,17 +165,44 @@ async function main() {
     console.error("Context Echo MCP Server running on stdio");
 }
 
-// Start the server only if this file is run directly (not in a worker-proxy context that might import it)
-const isMainModule = process.argv[1] &&
-    (process.argv[1] === fileURLToPath(import.meta.url) ||
-        process.argv[1].endsWith("index.js") ||
-        process.argv[1].endsWith("index.ts"));
+// Helper to detect if this is the main module in a way that's safe for both ESM and CJS
+const isMainModule = () => {
+    try {
+        // Safe check for process and argv
+        if (typeof process === 'undefined' || !process.argv || !process.argv[1]) {
+            return false;
+        }
 
-if (isMainModule) {
+        const mainPath = process.argv[1];
+        // Only use import.meta if it exists (ESM)
+        // Note: Using a string check to avoid syntax errors in some CJS environments
+        // but here we are in TS that compiles to ESM, so the issue is the RUNTIME scanner.
+        // @ts-ignore - import.meta is ESM only
+        const currentUrl = import.meta.url;
+        if (currentUrl) {
+            const currentPath = fileURLToPath(currentUrl);
+            return mainPath === currentPath || mainPath.endsWith("index.js") || mainPath.endsWith("index.ts");
+        }
+    } catch (e) {
+        // If import.meta.url fails or other issues occur, assume not main
+        return false;
+    }
+    return false;
+};
+
+if (isMainModule()) {
     main().catch((error) => {
         console.error("Fatal error in main():", error);
         process.exit(1);
     });
+}
+
+/**
+ * Smithery Sandbox Export
+ * Allows the registry to scan capabilities without real credentials.
+ */
+export function createSandboxServer() {
+    return server;
 }
 
 export default server;
