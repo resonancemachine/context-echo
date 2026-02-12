@@ -151,7 +151,7 @@ async function main() {
     // In-memory store for sessions
     const sessions = new Map<string, { server: McpServer, transport: StreamableHTTPServerTransport }>();
 
-    app.all("/mcp:path*", async (req, res) => {
+    app.all("/mcp", async (req, res) => {
         console.error(`[MCP] Incoming Request: ${req.method} ${req.url}`);
 
         const sessionId = (req.headers["mcp-session-id"] || req.query["sessionId"]) as string;
