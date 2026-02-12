@@ -172,6 +172,10 @@ async function main() {
         await transport.handleRequest(req, res);
     });
 
+    app.get("/healthz", (req, res) => {
+        res.status(200).json({ status: "ok" });
+    });
+
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);

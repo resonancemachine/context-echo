@@ -53,7 +53,9 @@ To use Context Echo with a local MCP client, you can run the server locally and 
 
 ### Standard Configuration
 
-The server runs on port 3000 by default and exposes an MCP endpoint at `/mcp`.
+The server runs on port 3000 by default and exposes:
+- **MCP Endpoint**: `http://localhost:3000/mcp`
+- **Health Check**: `http://localhost:3000/healthz` (Returns `{"status": "ok"}`)
 
 1. **Start the server locally**: `npm start`
 2. **In your client's MCP settings** (e.g., `claude_desktop_config.json`), use the `sse` transport:
