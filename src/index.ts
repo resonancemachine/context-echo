@@ -176,6 +176,9 @@ async function main() {
         res.status(200).json({ status: "ok" });
     });
 
+    // Serve static files from the .well-known directory
+    app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
+
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);

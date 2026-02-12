@@ -6,6 +6,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextpro
 import { loadGraph, saveGraph } from "./storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
+import path from "path";
 const server = new Server({
     name: "context-echo",
     version: "1.0.0",
@@ -143,6 +144,8 @@ async function main() {
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });
+    // Serve static files from the .well-known directory
+    app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
