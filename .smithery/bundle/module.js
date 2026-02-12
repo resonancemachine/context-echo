@@ -27830,8 +27830,23 @@ async function main() {
   await server.connect(transport);
   console.error("Context Echo MCP Server running on stdio");
 }
-var isMainModule = process.argv[1] && (process.argv[1] === fileURLToPath(import.meta.url) || process.argv[1].endsWith("index.js") || process.argv[1].endsWith("index.ts"));
-if (isMainModule) {
+var isMainModule = () => {
+  try {
+    if (typeof process === "undefined" || !process.argv || !process.argv[1]) {
+      return false;
+    }
+    const mainPath = process.argv[1];
+    const currentUrl = import.meta.url;
+    if (currentUrl) {
+      const currentPath = fileURLToPath(currentUrl);
+      return mainPath === currentPath || mainPath.endsWith("index.js") || mainPath.endsWith("index.ts");
+    }
+  } catch (e) {
+    return false;
+  }
+  return false;
+};
+if (isMainModule()) {
   main().catch((error48) => {
     console.error("Fatal error in main():", error48);
     process.exit(1);

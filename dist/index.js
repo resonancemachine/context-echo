@@ -1,9 +1,9 @@
-#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
 import { loadGraph, saveGraph } from "./storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
+import { fileURLToPath } from "url";
 const server = new Server({
     name: "context-echo",
     version: "1.0.0",
@@ -135,8 +135,42 @@ async function main() {
     await server.connect(transport);
     console.error("Context Echo MCP Server running on stdio");
 }
-main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-});
+// Helper to detect if this is the main module in a way that's safe for both ESM and CJS
+const isMainModule = () => {
+    try {
+        // Safe check for process and argv
+        if (typeof process === 'undefined' || !process.argv || !process.argv[1]) {
+            return false;
+        }
+        const mainPath = process.argv[1];
+        // Only use import.meta if it exists (ESM)
+        // Note: Using a string check to avoid syntax errors in some CJS environments
+        // but here we are in TS that compiles to ESM, so the issue is the RUNTIME scanner.
+        // @ts-ignore - import.meta is ESM only
+        const currentUrl = import.meta.url;
+        if (currentUrl) {
+            const currentPath = fileURLToPath(currentUrl);
+            return mainPath === currentPath || mainPath.endsWith("index.js") || mainPath.endsWith("index.ts");
+        }
+    }
+    catch (e) {
+        // If import.meta.url fails or other issues occur, assume not main
+        return false;
+    }
+    return false;
+};
+if (isMainModule()) {
+    main().catch((error) => {
+        console.error("Fatal error in main():", error);
+        process.exit(1);
+    });
+}
+/**
+ * Smithery Sandbox Export
+ * Allows the registry to scan capabilities without real credentials.
+ */
+export function createSandboxServer() {
+    return server;
+}
+export default server;
 //# sourceMappingURL=index.js.map
