@@ -31,4 +31,4 @@ jobs:
         run: npm run build
 
       - name: Publish to Smithery
-        run: npx @smithery/cli publish --key ${{ secrets.SMITHERY_API_KEY }}
+        run: npx @smithery/cli publish --key ${{ secrets.SMITHERY_API_KEY }} --name @resonancemachine/context-echo
