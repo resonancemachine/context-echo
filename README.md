@@ -1,6 +1,6 @@
 # Context Echo
 
-Context Echo is a lightweight Model Context Protocol (MCP) memory server that stores user context (Entities, Relations, Facts) as a structured knowledge graph in local JSON files. It provides persistent memory for AI agents, allowing them to retain information across different sessions.
+Context Echo is a lightweight Model Context Protocol (MCP) memory server that stores user context (Entities, Relations, Facts) as a structured knowledge graph in local JSON files. It provides persistent memory for AI agents, allowing them to retain information across different sessions. It uses the **Streamable HTTP** transport protocol, enabling it to be hosted in the cloud and accessed via public HTTPS URLs.
 
 ## Features
 
@@ -49,11 +49,14 @@ npx tsx src/scripts/test-tools.ts
 
 ## MCP Client Integration (e.g., TOME, Claude Desktop)
 
-To use Context Echo with a local MCP client, you need to point the client to the compiled `dist/index.js` file using absolute paths.
+To use Context Echo with a local MCP client, you can run the server locally and point the client to its HTTP endpoint.
 
 ### Standard Configuration
 
-In your client's MCP settings (e.g., `claude_desktop_config.json`), add:
+The server runs on port 3000 by default and exposes an MCP endpoint at `/mcp`.
+
+1. **Start the server locally**: `npm start`
+2. **In your client's MCP settings** (e.g., `claude_desktop_config.json`), use the `sse` transport:
 
 ```json
 {
@@ -65,14 +68,15 @@ In your client's MCP settings (e.g., `claude_desktop_config.json`), add:
   }
 }
 ```
+*Note: While the server uses HTTP/SSE, it can still be executed via CLI as shown above for local testing.*
 
-### Running with TOME
+### Running with TOME (HTTP Mode)
 
 1. Ensure the project is built: `npm run build`.
-2. In TOME, add a new MCP server.
-3. Select "Stdio" transport.
-4. Set Command to `node`.
-5. Set Arguments to the absolute path of `dist/index.js`.
+2. Start the server: `npm start`.
+3. In TOME, add a new MCP server.
+4. Select "SSE" transport.
+5. Set the URL to `http://localhost:3000/mcp`.
 
 ### Running with OpenCode
 
@@ -115,16 +119,16 @@ npx dotenv-cli -- sh -c 'npx @smithery/cli dev --key $SMITHERY_API_KEY'
 
 To publish your MCP server to the Smithery registry so others can discover and install it:
 
-1.  **Prepare a Dockerfile**: Smithery uses Docker to build and run your server in the cloud. Create a `Dockerfile` in the root (if not already present).
-2.  **Push to GitHub**: Ensure your project is pushed to a public GitHub repository.
-3.  **Deploy from Smithery Dashboard**:
-    - Go to [smithery.ai/deploy](https://smithery.ai/deploy).
-    - Select **"From GitHub"**.
-    - Choose your repository and follow the configuration steps.
-4.  **CLI Deployment**: Alternatively, you can use the CLI:
+1.  **Prepare for HTTP**: The server is already configured to use `Streamable-http` transport.
+2.  **Expose Port**: Ensure your cloud provider (e.g., Render, Fly.io, Heroku) uses port `3000`.
+3.  **Push to GitHub**: Ensure your project is pushed to your GitHub repository.
+4.  **Publish via CLI**:
     ```bash
-    npx @smithery/cli deploy
+    npx @smithery/cli publish --key $SMITHERY_API_KEY --name @your-namespace/context-echo
     ```
+5.  **Configure in Smithery**:
+    - Go to your server on [smithery.ai](https://smithery.ai).
+    - Under **Deployment**, set the **Public HTTP URL** to your cloud deployment address (e.g., `https://context-echo.onrender.com/mcp`).
 
 Once published, users can install your server globally using:
 ```bash
