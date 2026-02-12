@@ -168,11 +168,50 @@ async function main() {
     }));
     app.use(express.json());
 
-    const transport = new StreamableHTTPServerTransport();
+    const transports = new Map<string, StreamableHTTPServerTransport>();
 
     app.all("/mcp", async (req, res) => {
-        await transport.handleRequest(req, res);
+        const sessionId = req.headers["mcp-session-id"] as string;
+        let transport: StreamableHTTPServerTransport;
+
+        if (sessionId && transports.has(sessionId)) {
+            transport = transports.get(sessionId)!;
+        } else {
+            console.error(`Creating new transport session. Previous ID: ${sessionId}`);
+            transport = new StreamableHTTPServerTransport();
+            await server.connect(transport);
+
+            // The session ID is actually generated during handleRequest and set in headers.
+            // We need a way to capture it if we want to store it in our map for persistence.
+            // For now, let's log and see if this solves the 500.
+        }
+
+        try {
+            await transport.handleRequest(req, res);
+
+            // Handle the case where a new session was just created
+            const responseSessionId = res.getHeader("mcp-session-id") as string;
+            if (responseSessionId && !transports.has(responseSessionId)) {
+                transports.set(responseSessionId, transport);
+                console.error(`Stored new transport session: ${responseSessionId}`);
+            }
+        } catch (error) {
+            console.error("MCP Transport Error:", error);
+            res.status(500).json({
+                error: "Internal Server Error",
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
+        }
     });
+
+    // Cleanup old sessions periodically (basic implementation)
+    setInterval(() => {
+        if (transports.size > 100) {
+            console.error("Cleaning up transports map (size > 100)");
+            transports.clear();
+        }
+    }, 1000 * 60 * 60); // Every hour
 
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
@@ -181,8 +220,7 @@ async function main() {
     // Serve static files from the .well-known directory
     app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
 
-    await server.connect(transport);
-
+    // Start server after connecting
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
