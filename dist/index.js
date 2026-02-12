@@ -7,129 +7,135 @@ import { loadGraph, saveGraph } from "./storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
-const server = new Server({
-    name: "context-echo",
-    version: "1.0.0",
-}, {
-    capabilities: {
-        tools: {},
-    },
-});
 /**
- * List available tools.
+ * Create a new MCP server instance with all tool handlers registered.
  */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-        tools: [
-            {
-                name: "memory.add",
-                description: "Add an entity, relation, or fact to the user's knowledge graph.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        userId: { type: "string" },
-                        entity: { type: "object" },
-                        relation: { type: "object" },
-                        fact: { type: "object" },
+function createMcpServer() {
+    const server = new Server({
+        name: "context-echo",
+        version: "1.0.0",
+    }, {
+        capabilities: {
+            tools: {},
+        },
+    });
+    /**
+     * List available tools.
+     */
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
+        return {
+            tools: [
+                {
+                    name: "memory.add",
+                    description: "Add an entity, relation, or fact to the user's knowledge graph.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            userId: { type: "string" },
+                            entity: { type: "object" },
+                            relation: { type: "object" },
+                            fact: { type: "object" },
+                        },
+                        required: ["userId"],
                     },
-                    required: ["userId"],
                 },
-            },
-            {
-                name: "memory.query",
-                description: "Query the user's knowledge graph for relevant context.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        userId: { type: "string" },
-                        query: { type: "string" },
+                {
+                    name: "memory.query",
+                    description: "Query the user's knowledge graph for relevant context.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            userId: { type: "string" },
+                            query: { type: "string" },
+                        },
+                        required: ["userId", "query"],
                     },
-                    required: ["userId", "query"],
                 },
-            },
-            {
-                name: "memory.summarize",
-                description: "Summarize the user's knowledge graph.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        userId: { type: "string" },
+                {
+                    name: "memory.summarize",
+                    description: "Summarize the user's knowledge graph.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            userId: { type: "string" },
+                        },
+                        required: ["userId"],
                     },
-                    required: ["userId"],
                 },
-            },
-        ],
-    };
-});
-/**
- * Handle tool calls.
- */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    if (!args || typeof args.userId !== "string") {
-        throw new Error("userId is required and must be a string");
-    }
-    const userId = args.userId;
-    switch (name) {
-        case "memory.add": {
-            const graph = await loadGraph(userId);
-            let addedCount = 0;
-            if (args.entity) {
-                graph.entities.push(EntitySchema.parse(args.entity));
-                addedCount++;
-            }
-            if (args.relation) {
-                graph.relations.push(RelationSchema.parse(args.relation));
-                addedCount++;
-            }
-            if (args.fact) {
-                graph.facts.push(FactSchema.parse(args.fact));
-                addedCount++;
-            }
-            if (addedCount > 0) {
-                await saveGraph(userId, graph);
+            ],
+        };
+    });
+    /**
+     * Handle tool calls.
+     */
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        const { name, arguments: args } = request.params;
+        if (!args || typeof args.userId !== "string") {
+            throw new Error("userId is required and must be a string");
+        }
+        const userId = args.userId;
+        switch (name) {
+            case "memory.add": {
+                const graph = await loadGraph(userId);
+                let addedCount = 0;
+                if (args.entity) {
+                    graph.entities.push(EntitySchema.parse(args.entity));
+                    addedCount++;
+                }
+                if (args.relation) {
+                    graph.relations.push(RelationSchema.parse(args.relation));
+                    addedCount++;
+                }
+                if (args.fact) {
+                    graph.facts.push(FactSchema.parse(args.fact));
+                    addedCount++;
+                }
+                if (addedCount > 0) {
+                    await saveGraph(userId, graph);
+                    return {
+                        content: [{ type: "text", text: `Successfully added ${addedCount} items to memory for user ${userId}.` }],
+                    };
+                }
                 return {
-                    content: [{ type: "text", text: `Successfully added ${addedCount} items to memory for user ${userId}.` }],
+                    content: [{ type: "text", text: "No items provided to add." }],
                 };
             }
-            return {
-                content: [{ type: "text", text: "No items provided to add." }],
-            };
+            case "memory.query": {
+                const query = String(args.query).toLowerCase();
+                const graph = await loadGraph(userId);
+                const matchedEntities = graph.entities.filter(e => e.name.toLowerCase().includes(query) || (e.type && e.type.toLowerCase().includes(query)));
+                const matchedRelations = graph.relations.filter(r => r.source.toLowerCase().includes(query) || r.target.toLowerCase().includes(query) || r.type.toLowerCase().includes(query));
+                const matchedFacts = graph.facts.filter(f => f.content.toLowerCase().includes(query));
+                const result = {
+                    entities: matchedEntities,
+                    relations: matchedRelations,
+                    facts: matchedFacts
+                };
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+            case "memory.summarize": {
+                const graph = await loadGraph(userId);
+                const summary = [
+                    `Knowledge Graph Summary for User: ${userId}`,
+                    `- Entities: ${graph.entities.length}`,
+                    `- Relations: ${graph.relations.length}`,
+                    `- Facts: ${graph.facts.length}`,
+                    "",
+                    "Facts recorded:",
+                    ...graph.facts.map(f => `- [${f.confidence.toFixed(2)}] ${f.content} (${new Date(f.timestamp).toLocaleDateString()})`)
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text: summary }],
+                };
+            }
+            default:
+                throw new Error(`Unknown tool: ${name}`);
         }
-        case "memory.query": {
-            const query = String(args.query).toLowerCase();
-            const graph = await loadGraph(userId);
-            const matchedEntities = graph.entities.filter(e => e.name.toLowerCase().includes(query) || (e.type && e.type.toLowerCase().includes(query)));
-            const matchedRelations = graph.relations.filter(r => r.source.toLowerCase().includes(query) || r.target.toLowerCase().includes(query) || r.type.toLowerCase().includes(query));
-            const matchedFacts = graph.facts.filter(f => f.content.toLowerCase().includes(query));
-            const result = {
-                entities: matchedEntities,
-                relations: matchedRelations,
-                facts: matchedFacts
-            };
-            return {
-                content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-            };
-        }
-        case "memory.summarize": {
-            const graph = await loadGraph(userId);
-            const summary = [
-                `Knowledge Graph Summary for User: ${userId}`,
-                `- Entities: ${graph.entities.length}`,
-                `- Relations: ${graph.relations.length}`,
-                `- Facts: ${graph.facts.length}`,
-                "",
-                "Facts recorded:",
-                ...graph.facts.map(f => `- [${f.confidence.toFixed(2)}] ${f.content} (${new Date(f.timestamp).toLocaleDateString()})`)
-            ].join("\n");
-            return {
-                content: [{ type: "text", text: summary }],
-            };
-        }
-        default:
-            throw new Error(`Unknown tool: ${name}`);
-    }
-});
+    });
+    return server;
+}
 /**
  * Start the server.
  */
@@ -139,32 +145,31 @@ async function main() {
         exposedHeaders: ["mcp-session-id"],
     }));
     app.use(express.json());
-    const transports = new Map();
+    const sessions = new Map();
     app.all("/mcp", async (req, res) => {
         const sessionId = req.headers["mcp-session-id"];
-        let transport;
-        if (sessionId && transports.has(sessionId)) {
-            transport = transports.get(sessionId);
+        let session;
+        if (sessionId && sessions.has(sessionId)) {
+            session = sessions.get(sessionId);
         }
         else {
-            console.error(`Creating new transport session. Previous ID: ${sessionId}`);
-            transport = new StreamableHTTPServerTransport();
+            console.error(`Creating new session. Previous ID: ${sessionId}`);
+            const server = createMcpServer();
+            const transport = new StreamableHTTPServerTransport();
             await server.connect(transport);
-            // The session ID is actually generated during handleRequest and set in headers.
-            // We need a way to capture it if we want to store it in our map for persistence.
-            // For now, let's log and see if this solves the 500.
+            session = { server, transport };
         }
         try {
-            await transport.handleRequest(req, res);
-            // Handle the case where a new session was just created
+            await session.transport.handleRequest(req, res);
+            // Capture session ID from response headers if it was just created
             const responseSessionId = res.getHeader("mcp-session-id");
-            if (responseSessionId && !transports.has(responseSessionId)) {
-                transports.set(responseSessionId, transport);
-                console.error(`Stored new transport session: ${responseSessionId}`);
+            if (responseSessionId && !sessions.has(responseSessionId)) {
+                sessions.set(responseSessionId, session);
+                console.error(`Stored new session: ${responseSessionId}`);
             }
         }
         catch (error) {
-            console.error("MCP Transport Error:", error);
+            console.error("MCP Session Error:", error);
             res.status(500).json({
                 error: "Internal Server Error",
                 message: error instanceof Error ? error.message : String(error),
@@ -172,19 +177,18 @@ async function main() {
             });
         }
     });
-    // Cleanup old sessions periodically (basic implementation)
+    // Cleanup old sessions periodically
     setInterval(() => {
-        if (transports.size > 100) {
-            console.error("Cleaning up transports map (size > 100)");
-            transports.clear();
+        if (sessions.size > 100) {
+            console.error("Cleaning up sessions map (size > 100)");
+            sessions.clear();
         }
-    }, 1000 * 60 * 60); // Every hour
+    }, 1000 * 60 * 60);
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });
     // Serve static files from the .well-known directory
     app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
-    // Start server after connecting
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
@@ -225,8 +229,10 @@ if (isMainModule()) {
  * Smithery Sandbox Export
  * Allows the registry to scan capabilities without real credentials.
  */
+// Create a singleton for static export
+const singletonServer = createMcpServer();
 export function createSandboxServer() {
-    return server;
+    return singletonServer;
 }
-export default server;
+export default singletonServer;
 //# sourceMappingURL=index.js.map
