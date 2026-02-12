@@ -1,11 +1,13 @@
 version: "1.0"
 runtime: typescript
+transport: shttp
 commandFunction: |
   (config) => ({
     command: 'node',
     args: ['dist/index.js'],
     env: {
-      SMITHERY_API_KEY: config.SMITHERY_API_KEY
+      SMITHERY_API_KEY: config.SMITHERY_API_KEY,
+      PORT: '3000'
     }
   })
 tools:

@@ -1,5 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import express from "express";
+import cors from "cors";
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
@@ -160,9 +162,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
  * Start the server.
  */
 async function main() {
-    const transport = new StdioServerTransport();
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    const transport = new StreamableHTTPServerTransport();
+
+    app.all("/mcp", async (req, res) => {
+        await transport.handleRequest(req, res);
+    });
+
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+    app.listen(port, () => {
+        console.error(`Context Echo MCP Server running on port ${port}`);
+        console.error(`MCP endpoint: http://localhost:${port}/mcp`);
+    });
+
     await server.connect(transport);
-    console.error("Context Echo MCP Server running on stdio");
 }
 
 // Helper to detect if this is the main module in a way that's safe for both ESM and CJS

@@ -17,6 +17,9 @@ COPY . .
 # Build the project
 RUN npm run build
 
+# Expose the port the server listens on
+EXPOSE 3000
+
 # The Docker image will run the compiled JavaScript
 # Use the direct path to the compiled file
 ENTRYPOINT ["node", "dist/index.js"]
