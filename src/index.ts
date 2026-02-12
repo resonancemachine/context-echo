@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -8,7 +6,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { loadGraph, saveGraph } from "./storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
-import { z } from "zod";
+import { fileURLToPath } from "url";
+import path from "path";
 
 const server = new Server(
     {
@@ -166,7 +165,17 @@ async function main() {
     console.error("Context Echo MCP Server running on stdio");
 }
 
-main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-});
+// Start the server only if this file is run directly (not in a worker-proxy context that might import it)
+const isMainModule = process.argv[1] &&
+    (process.argv[1] === fileURLToPath(import.meta.url) ||
+        process.argv[1].endsWith("index.js") ||
+        process.argv[1].endsWith("index.ts"));
+
+if (isMainModule) {
+    main().catch((error) => {
+        console.error("Fatal error in main():", error);
+        process.exit(1);
+    });
+}
+
+export default server;

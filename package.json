@@ -1,6 +1,8 @@
 {
   "name": "context-echo",
   "version": "1.0.0",
+  "module": "./src/index.ts",
+  "bin": "./dist/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc",

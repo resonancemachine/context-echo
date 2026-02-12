@@ -1,4 +1,13 @@
 version: "1.0"
+runtime: typescript
+commandFunction: |
+  (config) => ({
+    command: 'node',
+    args: ['dist/index.js'],
+    env: {
+      SMITHERY_API_KEY: config.SMITHERY_API_KEY
+    }
+  })
 tools:
   - name: memory.add
     description: Add an entity, relation, or fact to the user's knowledge graph.

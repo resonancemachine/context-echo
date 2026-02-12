@@ -99,6 +99,18 @@ To run the server locally with hot-reloading and a testing interface:
 npx @smithery/cli dev
 ```
 
+#### Loading Environment Variables
+If you need to load variables from a `.env` file (like `SMITHERY_API_KEY`) while running the dev server, use the following command to pass the key explicitly:
+
+```bash
+export $(cat .env | xargs) && npx @smithery/cli dev --key $SMITHERY_API_KEY
+```
+
+Or using `dotenv-cli`:
+```bash
+npx dotenv-cli -- sh -c 'npx @smithery/cli dev --key $SMITHERY_API_KEY'
+```
+
 ### Publishing to Smithery
 
 To publish your MCP server to the Smithery registry so others can discover and install it:
