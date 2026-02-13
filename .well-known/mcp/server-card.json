@@ -5,12 +5,131 @@
     "description": "Store user context as a structured knowledge graph in MCP memory JSON, and let tools query or update it over time.",
     "icon": "https://avatars.githubusercontent.com/u/260763791?v=4"
   },
+  "transport": {
+    "type": "shttp",
+    "endpoint": "/mcp"
+  },
+  "tools": [
+    {
+      "name": "memory.add",
+      "description": "Add an entity, relation, or fact to the user's knowledge graph.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The ID of the user whose memory to update."
+          },
+          "entity": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ]
+          },
+          "relation": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "source",
+              "target",
+              "type"
+            ]
+          },
+          "fact": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "timestamp": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "confidence",
+              "timestamp"
+            ]
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      }
+    },
+    {
+      "name": "memory.query",
+      "description": "Query the user's knowledge graph for relevant context.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The ID of the user whose memory to query."
+          },
+          "query": {
+            "type": "string",
+            "description": "The query string to search for."
+          }
+        },
+        "required": [
+          "userId",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "memory.summarize",
+      "description": "Summarize the user's knowledge graph.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "The ID of the user whose memory to summarize."
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      }
+    }
+  ],
+  "resources": [],
+  "prompts": [],
   "runtime": {
     "type": "node",
-    "command": "npx",
+    "command": "node",
     "args": [
-      "-y",
-      "@resonance/context-echo@latest"
+      "dist/index.js"
     ]
   }
 }

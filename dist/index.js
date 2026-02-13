@@ -116,14 +116,15 @@ async function main() {
     // In-memory store for sessions
     const sessions = new Map();
     app.all("/mcp", async (req, res) => {
-        console.error(`[MCP] Incoming Request: ${req.method} ${req.url}`);
+        console.error(`[MCP] ${req.method} ${req.url}`);
         const sessionId = (req.headers["mcp-session-id"] || req.query["sessionId"]);
         let session;
         if (sessionId && sessions.has(sessionId)) {
             session = sessions.get(sessionId);
+            console.error(`[MCP] Session found: ${sessionId}`);
         }
         else {
-            console.error(`[MCP] Creating new session. Provided ID: ${sessionId}`);
+            console.error(`[MCP] New session required. Provided ID: ${sessionId || "none"}`);
             const server = createServer({ config: {} });
             const transport = new StreamableHTTPServerTransport();
             await server.connect(transport);
@@ -131,18 +132,22 @@ async function main() {
         }
         try {
             await session.transport.handleRequest(req, res);
+            // Capture session ID after handleRequest
             const responseSessionId = res.getHeader("mcp-session-id");
             if (responseSessionId && !sessions.has(responseSessionId)) {
                 sessions.set(responseSessionId, session);
-                console.error(`[MCP] Stored new session: ${responseSessionId}`);
+                console.error(`[MCP] Session stored: ${responseSessionId}`);
             }
+            console.error(`[MCP] Response: ${res.statusCode} (${responseSessionId || "no session"})`);
         }
         catch (error) {
-            console.error("[MCP] Session Error:", error);
-            res.status(500).json({
-                error: "Internal Server Error",
-                message: error instanceof Error ? error.message : String(error),
-            });
+            console.error("[MCP] Execution Error:", error);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: "Internal Server Error",
+                    message: error instanceof Error ? error.message : String(error),
+                });
+            }
         }
     });
     // Cleanup old sessions periodically
