@@ -127,9 +127,10 @@
   "prompts": [],
   "runtime": {
     "type": "node",
-    "command": "node",
+    "command": "npx",
     "args": [
-      "dist/index.js"
+      "-y",
+      "@resonance/context-echo@latest"
     ]
   }
 }
