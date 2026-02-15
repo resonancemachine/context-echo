@@ -119,15 +119,22 @@ async function main() {
     });
     await server.connect(transport);
     app.all("/mcp", async (req, res) => {
+        console.error(`[MCP] Request: ${req.method} ${req.url}`);
+        console.error(`[MCP] Headers: ${JSON.stringify(req.headers)}`);
         try {
             await transport.handleRequest(req, res, req.body);
+            console.error(`[MCP] Response: ${res.statusCode}`);
         }
         catch (error) {
-            console.error("[MCP] Transport Error:", error);
+            console.error("[MCP] Transport Error Exception:", error);
+            if (error instanceof Error) {
+                console.error("[MCP] Stack Trace:", error.stack);
+            }
             if (!res.headersSent) {
                 res.status(500).json({
                     error: "Internal Server Error",
                     message: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined
                 });
             }
         }
@@ -141,6 +148,16 @@ async function main() {
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
         console.error(`MCP endpoint: http://localhost:${port}/mcp`);
+    });
+    // Global error handler
+    app.use((err, req, res, next) => {
+        console.error("[EXPRESS] Unhandled Error:", err);
+        if (!res.headersSent) {
+            res.status(500).json({
+                error: "Global Server Error",
+                message: err instanceof Error ? err.message : String(err),
+            });
+        }
     });
 }
 // Helper to detect if this is the main module
