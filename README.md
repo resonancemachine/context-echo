@@ -8,7 +8,7 @@ Context Echo is a lightweight Model Context Protocol (MCP) memory server that st
 - **Relation Mapping**: Link entities together with typed relationships and weights.
 - **Fact Recording**: Store factual statements with confidence scores and timestamps.
 - **Local Persistence**: Data is saved to `./memory/{userId}.json` using Zod for robust validation.
-- **MCP Native**: Implements `memory.add`, `memory.query`, and `memory.summarize` tools.
+- **MCP Native**: Implements `memory-add`, `memory-query`, and `memory-summarize` tools.
 
 ## Getting Started
 

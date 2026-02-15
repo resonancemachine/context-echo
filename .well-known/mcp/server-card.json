@@ -11,7 +11,7 @@
   },
   "tools": [
     {
-      "name": "memory.add",
+      "name": "memory-add",
       "description": "Add an entity, relation, or fact to the user's knowledge graph.",
       "inputSchema": {
         "type": "object",
@@ -86,7 +86,7 @@
       }
     },
     {
-      "name": "memory.query",
+      "name": "memory-query",
       "description": "Query the user's knowledge graph for relevant context.",
       "inputSchema": {
         "type": "object",
@@ -107,7 +107,7 @@
       }
     },
     {
-      "name": "memory.summarize",
+      "name": "memory-summarize",
       "description": "Summarize the user's knowledge graph.",
       "inputSchema": {
         "type": "object",

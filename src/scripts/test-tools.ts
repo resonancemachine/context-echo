@@ -1,5 +1,7 @@
 import { loadGraph, saveGraph } from "../storage.js";
 import { EntitySchema, RelationSchema, FactSchema } from "../types.js";
+import fs from "fs";
+import path from "path";
 
 // Mocking the tool call logic since we can't easily run the StdioServer in a script
 async function mockToolCall(name: string, args: any) {
@@ -7,7 +9,7 @@ async function mockToolCall(name: string, args: any) {
     console.log(`\n--- Calling tool: ${name} for ${userId} ---`);
 
     switch (name) {
-        case "memory.add": {
+        case "memory-add": {
             const graph = await loadGraph(userId);
             if (args.entity) graph.entities.push(EntitySchema.parse(args.entity));
             if (args.relation) graph.relations.push(RelationSchema.parse(args.relation));
@@ -15,13 +17,13 @@ async function mockToolCall(name: string, args: any) {
             await saveGraph(userId, graph);
             return `Added items to ${userId}`;
         }
-        case "memory.query": {
+        case "memory-query": {
             const query = args.query.toLowerCase();
             const graph = await loadGraph(userId);
             const matchedEntities = graph.entities.filter(e => e.name.toLowerCase().includes(query));
             return JSON.stringify({ entities: matchedEntities }, null, 2);
         }
-        case "memory.summarize": {
+        case "memory-summarize": {
             const graph = await loadGraph(userId);
             return `Summary for ${userId}: ${graph.entities.length} entities, ${graph.facts.length} facts.`;
         }
@@ -32,16 +34,20 @@ async function mockToolCall(name: string, args: any) {
 
 async function runTests() {
     const userId = "tool-test-user";
+    const memoryFile = path.join(process.cwd(), "memory", `${userId}.json`);
+    if (fs.existsSync(memoryFile)) {
+        fs.unlinkSync(memoryFile);
+    }
 
     // 1. Add
-    console.log(await mockToolCall("memory.add", {
+    console.log(await mockToolCall("memory-add", {
         userId,
         entity: { name: "Bob", type: "Person" },
         fact: { content: "Bob loves TypeScript.", confidence: 1.0, timestamp: new Date().toISOString() }
     }));
 
     // 2. Query
-    const queryResult = await mockToolCall("memory.query", { userId, query: "Bob" });
+    const queryResult = await mockToolCall("memory-query", { userId, query: "Bob" });
     console.log("Query Result:", queryResult);
 
     if (!queryResult.includes("Bob")) {
@@ -49,7 +55,7 @@ async function runTests() {
     }
 
     // 3. Summarize
-    const summaryResult = await mockToolCall("memory.summarize", { userId });
+    const summaryResult = await mockToolCall("memory-summarize", { userId });
     console.log("Summary Result:", summaryResult);
 
     if (!summaryResult.includes("1 entities")) {

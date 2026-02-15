@@ -11,7 +11,7 @@ commandFunction: |
     }
   })
 tools:
-  - name: memory.add
+  - name: memory-add
     description: Add an entity, relation, or fact to the user's knowledge graph.
     inputSchema:
       type: object
@@ -27,7 +27,7 @@ tools:
           $ref: "#/definitions/Fact"
     required: [userId]
 
-  - name: memory.query
+  - name: memory-query
     description: Query the user's knowledge graph for relevant context.
     inputSchema:
       type: object
@@ -40,7 +40,7 @@ tools:
           description: The query string to search for.
     required: [userId, query]
 
-  - name: memory.summarize
+  - name: memory-summarize
     description: Summarize the user's knowledge graph or a specific portion of it.
     inputSchema:
       type: object

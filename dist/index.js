@@ -26,7 +26,7 @@ export function createServer({ config }) {
     /**
      * Tool: memory.add
      */
-    server.tool("memory.add", "Add an entity, relation, or fact to the user's knowledge graph.", {
+    server.tool("memory-add", "Add an entity, relation, or fact to the user's knowledge graph.", {
         userId: z.string(),
         entity: EntitySchema.optional(),
         relation: RelationSchema.optional(),
@@ -60,7 +60,7 @@ export function createServer({ config }) {
     /**
      * Tool: memory.query
      */
-    server.tool("memory.query", "Query the user's knowledge graph for relevant context.", {
+    server.tool("memory-query", "Query the user's knowledge graph for relevant context.", {
         userId: z.string(),
         query: z.string(),
     }, async (args) => {
@@ -82,7 +82,7 @@ export function createServer({ config }) {
     /**
      * Tool: memory.summarize
      */
-    server.tool("memory.summarize", "Summarize the user's knowledge graph.", {
+    server.tool("memory-summarize", "Summarize the user's knowledge graph.", {
         userId: z.string(),
     }, async (args) => {
         const userId = args.userId;

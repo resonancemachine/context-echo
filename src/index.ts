@@ -30,7 +30,7 @@ export function createServer({ config }: { config: z.infer<typeof configSchema> 
      * Tool: memory.add
      */
     server.tool(
-        "memory.add",
+        "memory-add",
         "Add an entity, relation, or fact to the user's knowledge graph.",
         {
             userId: z.string(),
@@ -72,7 +72,7 @@ export function createServer({ config }: { config: z.infer<typeof configSchema> 
      * Tool: memory.query
      */
     server.tool(
-        "memory.query",
+        "memory-query",
         "Query the user's knowledge graph for relevant context.",
         {
             userId: z.string(),
@@ -109,7 +109,7 @@ export function createServer({ config }: { config: z.infer<typeof configSchema> 
      * Tool: memory.summarize
      */
     server.tool(
-        "memory.summarize",
+        "memory-summarize",
         "Summarize the user's knowledge graph.",
         {
             userId: z.string(),
