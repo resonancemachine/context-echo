@@ -7,7 +7,6 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
-import crypto from "crypto";
 /**
  * Smithery Session Configuration Schema.
  */
@@ -116,7 +115,7 @@ async function main() {
     app.use(express.json());
     const server = createServer({ config: {} });
     const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID()
+        sessionIdGenerator: undefined
     });
     await server.connect(transport);
     app.all("/mcp", async (req, res) => {

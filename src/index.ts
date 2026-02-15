@@ -151,7 +151,7 @@ async function main() {
 
     const server = createServer({ config: {} });
     const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID()
+        sessionIdGenerator: undefined
     });
 
     await server.connect(transport);
