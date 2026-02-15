@@ -105,6 +105,12 @@ export function createServer({ config }) {
  * Start the web server.
  */
 async function main() {
+    process.on("uncaughtException", (err) => {
+        console.error("[CRASH] Uncaught Exception:", err);
+    });
+    process.on("unhandledRejection", (reason, promise) => {
+        console.error("[CRASH] Unhandled Rejection at:", promise, "reason:", reason);
+    });
     const app = express();
     app.use(cors({
         origin: "*",
@@ -112,23 +118,24 @@ async function main() {
         allowedHeaders: ["Content-Type", "mcp-session-id", "Authorization"],
         exposedHeaders: ["mcp-session-id"],
     }));
-    app.use(express.json());
     const server = createServer({ config: {} });
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined
-    });
-    await server.connect(transport);
     app.all("/mcp", async (req, res) => {
-        console.error(`[MCP] Request: ${req.method} ${req.url}`);
-        console.error(`[MCP] Headers: ${JSON.stringify(req.headers)}`);
+        console.error(`[STEP 1] /mcp Request: ${req.method} ${req.url}`);
+        const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined
+        });
         try {
-            await transport.handleRequest(req, res, req.body);
-            console.error(`[MCP] Response: ${res.statusCode}`);
+            console.error(`[STEP 2] Connecting server to transport`);
+            await server.connect(transport);
+            console.error(`[STEP 3] Calling handleRequest`);
+            // When parsedBody is undefined, the transport will read the raw body itself
+            await transport.handleRequest(req, res);
+            console.error(`[STEP 4] handleRequest returned. StatusCode: ${res.statusCode}`);
         }
         catch (error) {
-            console.error("[MCP] Transport Error Exception:", error);
+            console.error("[STEP ERROR] Exception:", error);
             if (error instanceof Error) {
-                console.error("[MCP] Stack Trace:", error.stack);
+                console.error("[STEP ERROR] Stack trace:", error.stack);
             }
             if (!res.headersSent) {
                 res.status(500).json({
@@ -139,6 +146,7 @@ async function main() {
             }
         }
     });
+    app.use(express.json());
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });

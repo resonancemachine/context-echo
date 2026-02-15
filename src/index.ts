@@ -7,7 +7,6 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
-import crypto from "crypto";
 
 /**
  * Smithery Session Configuration Schema.
@@ -140,6 +139,14 @@ export function createServer({ config }: { config: z.infer<typeof configSchema> 
  * Start the web server.
  */
 async function main() {
+    // Robust process error handling for cloud deployments
+    process.on("uncaughtException", (err) => {
+        console.error("[FATAL] Uncaught Exception:", err);
+    });
+    process.on("unhandledRejection", (reason, promise) => {
+        console.error("[FATAL] Unhandled Rejection at:", promise, "reason:", reason);
+    });
+
     const app = express();
     app.use(cors({
         origin: "*",
@@ -147,42 +154,36 @@ async function main() {
         allowedHeaders: ["Content-Type", "mcp-session-id", "Authorization"],
         exposedHeaders: ["mcp-session-id"],
     }));
-    app.use(express.json());
 
     const server = createServer({ config: {} });
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID()
-    });
 
-    await server.connect(transport);
-
+    // MCP Setup: Creates a fresh transport per request for stateless operation
     app.all("/mcp", async (req, res) => {
-        console.error(`[MCP] Request: ${req.method} ${req.url}`);
-        console.error(`[MCP] Headers: ${JSON.stringify(req.headers)}`);
+        const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined // Enables stateless mode
+        });
 
         try {
-            await transport.handleRequest(req, res, req.body);
-            console.error(`[MCP] Response: ${res.statusCode}`);
+            await server.connect(transport);
+            await transport.handleRequest(req, res);
         } catch (error) {
-            console.error("[MCP] Transport Error Exception:", error);
-            if (error instanceof Error) {
-                console.error("[MCP] Stack Trace:", error.stack);
-            }
+            console.error("[MCP] Connection Error:", error);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: "Internal Server Error",
-                    message: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined
+                    message: error instanceof Error ? error.message : "Handshake failed",
                 });
             }
         }
     });
 
+    // Other routes use the standard JSON body parser
+    app.use(express.json());
+
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });
 
-    // Serve static files from the .well-known directory
     app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
 
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -191,9 +192,9 @@ async function main() {
         console.error(`MCP endpoint: http://localhost:${port}/mcp`);
     });
 
-    // Global error handler
+    // Global Express error handler
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-        console.error("[EXPRESS] Unhandled Error:", err);
+        console.error("[EXPRESS] Global Error:", err);
         if (!res.headersSent) {
             res.status(500).json({
                 error: "Global Server Error",
@@ -203,7 +204,6 @@ async function main() {
     });
 }
 
-// Helper to detect if this is the main module
 const isMainModule = () => {
     try {
         if (typeof process === 'undefined' || !process.argv || !process.argv[1]) {
@@ -229,5 +229,4 @@ if (isMainModule()) {
     });
 }
 
-// Export for Smithery Sandbox
 export default createServer;
