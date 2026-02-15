@@ -7,6 +7,7 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
+import crypto from "crypto";
 /**
  * Smithery Session Configuration Schema.
  */
@@ -113,35 +114,17 @@ async function main() {
         exposedHeaders: ["mcp-session-id"],
     }));
     app.use(express.json());
-    // In-memory store for sessions
-    const sessions = new Map();
+    const server = createServer({ config: {} });
+    const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID()
+    });
+    await server.connect(transport);
     app.all("/mcp", async (req, res) => {
-        console.error(`[MCP] ${req.method} ${req.url}`);
-        const sessionId = (req.headers["mcp-session-id"] || req.query["sessionId"]);
-        let session;
-        if (sessionId && sessions.has(sessionId)) {
-            session = sessions.get(sessionId);
-            console.error(`[MCP] Session found: ${sessionId}`);
-        }
-        else {
-            console.error(`[MCP] New session required. Provided ID: ${sessionId || "none"}`);
-            const server = createServer({ config: {} });
-            const transport = new StreamableHTTPServerTransport();
-            await server.connect(transport);
-            session = { server, transport };
-        }
         try {
-            await session.transport.handleRequest(req, res);
-            // Capture session ID after handleRequest
-            const responseSessionId = res.getHeader("mcp-session-id");
-            if (responseSessionId && !sessions.has(responseSessionId)) {
-                sessions.set(responseSessionId, session);
-                console.error(`[MCP] Session stored: ${responseSessionId}`);
-            }
-            console.error(`[MCP] Response: ${res.statusCode} (${responseSessionId || "no session"})`);
+            await transport.handleRequest(req, res, req.body);
         }
         catch (error) {
-            console.error("[MCP] Execution Error:", error);
+            console.error("[MCP] Transport Error:", error);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: "Internal Server Error",
@@ -150,13 +133,6 @@ async function main() {
             }
         }
     });
-    // Cleanup old sessions periodically
-    setInterval(() => {
-        if (sessions.size > 100) {
-            console.error("Cleaning up sessions map (size > 100)");
-            sessions.clear();
-        }
-    }, 1000 * 60 * 60);
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });
