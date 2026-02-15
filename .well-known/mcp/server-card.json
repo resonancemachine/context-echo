@@ -130,7 +130,7 @@
     "command": "npx",
     "args": [
       "-y",
-      "@resonance/context-echo@latest"
+      "@resonate-ai/context-echo@latest"
     ]
   }
 }
