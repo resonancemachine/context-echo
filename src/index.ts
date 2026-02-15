@@ -7,6 +7,7 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
+import crypto from "crypto";
 
 /**
  * Smithery Session Configuration Schema.
@@ -139,7 +140,6 @@ export function createServer({ config }: { config: z.infer<typeof configSchema> 
  * Start the web server.
  */
 async function main() {
-    // Robust process error handling for cloud deployments
     process.on("uncaughtException", (err) => {
         console.error("[FATAL] Uncaught Exception:", err);
     });
@@ -155,29 +155,45 @@ async function main() {
         exposedHeaders: ["mcp-session-id"],
     }));
 
+    // Singleton Server and Transport Setup
     const server = createServer({ config: {} });
+    const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID()
+    });
 
-    // MCP Setup: Creates a fresh transport per request for stateless operation
-    app.all("/mcp", async (req, res) => {
-        const transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: undefined // Enables stateless mode
-        });
+    /**
+     * Session-ID Injection Middleware
+     * Ensures that stateless clients (without mcp-session-id header)
+     * are automatically assigned to a default session, preventing 400 errors.
+     */
+    const sessionMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (!req.headers["mcp-session-id"]) {
+            // Use a stable ID for stateless clients to reuse the same "virtual" session
+            req.headers["mcp-session-id"] = "stateless-session-common";
+        }
+        next();
+    };
 
+    // MCP Route Handler using Singleton Transport with Lazy Connection
+    app.all("/mcp", sessionMiddleware, async (req, res) => {
         try {
-            await server.connect(transport);
+            // Lazy connect the server to the transport on the first request
+            if (!server.isConnected()) {
+                await server.connect(transport);
+            }
             await transport.handleRequest(req, res);
         } catch (error) {
-            console.error("[MCP] Connection Error:", error);
+            console.error("[MCP] Transport Error:", error);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: "Internal Server Error",
                     message: error instanceof Error ? error.message : "Handshake failed",
+                    stack: process.env.NODE_ENV !== "production" ? (error instanceof Error ? error.stack : undefined) : undefined,
                 });
             }
         }
     });
 
-    // Other routes use the standard JSON body parser
     app.use(express.json());
 
     app.get("/healthz", (req, res) => {

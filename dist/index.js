@@ -7,6 +7,7 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
+import crypto from "crypto";
 /**
  * Smithery Session Configuration Schema.
  */
@@ -106,10 +107,10 @@ export function createServer({ config }) {
  */
 async function main() {
     process.on("uncaughtException", (err) => {
-        console.error("[CRASH] Uncaught Exception:", err);
+        console.error("[FATAL] Uncaught Exception:", err);
     });
     process.on("unhandledRejection", (reason, promise) => {
-        console.error("[CRASH] Unhandled Rejection at:", promise, "reason:", reason);
+        console.error("[FATAL] Unhandled Rejection at:", promise, "reason:", reason);
     });
     const app = express();
     app.use(cors({
@@ -118,30 +119,39 @@ async function main() {
         allowedHeaders: ["Content-Type", "mcp-session-id", "Authorization"],
         exposedHeaders: ["mcp-session-id"],
     }));
+    // Singleton Server and Transport Setup
     const server = createServer({ config: {} });
-    app.all("/mcp", async (req, res) => {
-        console.error(`[STEP 1] /mcp Request: ${req.method} ${req.url}`);
-        const transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: undefined
-        });
+    const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID()
+    });
+    /**
+     * Session-ID Injection Middleware
+     * Ensures that stateless clients (without mcp-session-id header)
+     * are automatically assigned to a default session, preventing 400 errors.
+     */
+    const sessionMiddleware = (req, res, next) => {
+        if (!req.headers["mcp-session-id"]) {
+            // Use a stable ID for stateless clients to reuse the same "virtual" session
+            req.headers["mcp-session-id"] = "stateless-session-common";
+        }
+        next();
+    };
+    // MCP Route Handler using Singleton Transport with Lazy Connection
+    app.all("/mcp", sessionMiddleware, async (req, res) => {
         try {
-            console.error(`[STEP 2] Connecting server to transport`);
-            await server.connect(transport);
-            console.error(`[STEP 3] Calling handleRequest`);
-            // When parsedBody is undefined, the transport will read the raw body itself
+            // Lazy connect the server to the transport on the first request
+            if (!server.isConnected()) {
+                await server.connect(transport);
+            }
             await transport.handleRequest(req, res);
-            console.error(`[STEP 4] handleRequest returned. StatusCode: ${res.statusCode}`);
         }
         catch (error) {
-            console.error("[STEP ERROR] Exception:", error);
-            if (error instanceof Error) {
-                console.error("[STEP ERROR] Stack trace:", error.stack);
-            }
+            console.error("[MCP] Transport Error:", error);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: "Internal Server Error",
-                    message: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined
+                    message: error instanceof Error ? error.message : "Handshake failed",
+                    stack: process.env.NODE_ENV !== "production" ? (error instanceof Error ? error.stack : undefined) : undefined,
                 });
             }
         }
@@ -150,16 +160,15 @@ async function main() {
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
     });
-    // Serve static files from the .well-known directory
     app.use('/.well-known', express.static(path.join(process.cwd(), '.well-known')));
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
     app.listen(port, () => {
         console.error(`Context Echo MCP Server running on port ${port}`);
         console.error(`MCP endpoint: http://localhost:${port}/mcp`);
     });
-    // Global error handler
+    // Global Express error handler
     app.use((err, req, res, next) => {
-        console.error("[EXPRESS] Unhandled Error:", err);
+        console.error("[EXPRESS] Global Error:", err);
         if (!res.headersSent) {
             res.status(500).json({
                 error: "Global Server Error",
@@ -168,7 +177,6 @@ async function main() {
         }
     });
 }
-// Helper to detect if this is the main module
 const isMainModule = () => {
     try {
         if (typeof process === 'undefined' || !process.argv || !process.argv[1]) {
@@ -193,6 +201,5 @@ if (isMainModule()) {
         process.exit(1);
     });
 }
-// Export for Smithery Sandbox
 export default createServer;
 //# sourceMappingURL=index.js.map
