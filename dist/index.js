@@ -7,7 +7,6 @@ import { EntitySchema, RelationSchema, FactSchema } from "./types.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { z } from "zod";
-import crypto from "crypto";
 /**
  * Smithery Session Configuration Schema.
  */
@@ -119,36 +118,18 @@ async function main() {
         allowedHeaders: ["Content-Type", "mcp-session-id", "Authorization"],
         exposedHeaders: ["mcp-session-id"],
     }));
-    // Singleton Server and Transport Setup
-    const server = createServer({ config: {} });
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID()
-    });
-    /**
-     * Session-ID Injection Middleware
-     * Ensures that stateless clients (without mcp-session-id header)
-     * are automatically assigned to a default session, preventing 400 errors.
-     */
-    const sessionMiddleware = (req, res, next) => {
-        console.error(`[SESSION] Incoming headers: ${JSON.stringify(req.headers)}`);
-        if (!req.headers["mcp-session-id"]) {
-            console.error("[SESSION] Injecting default session ID");
-            // Use a stable ID for stateless clients to reuse the same "virtual" session
-            req.headers["mcp-session-id"] = "stateless-session-common";
-        }
-        console.error(`[SESSION] Final headers: ${JSON.stringify(req.headers)}`);
-        next();
-    };
-    // MCP Route Handler using Singleton Transport with Lazy Connection
-    app.all("/mcp", sessionMiddleware, async (req, res) => {
-        console.error(`[MCP] Request headers in handler: ${JSON.stringify(req.headers)}`);
+    // MCP Route Handler - Using Session Isolation
+    // IMPORTANT: express.json() is NOT applied to this route to allow the SDK to handle the request stream.
+    app.all("/mcp", async (req, res) => {
+        console.error(`[MCP] Request received: ${req.method} ${req.url}`);
+        // Create a dedicated server and transport for this request/session.
+        // Using stateless mode (sessionIdGenerator: undefined) for robustness in cloud environments.
+        const server = createServer({ config: {} });
+        const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined
+        });
         try {
-            // Lazy connect the server to the transport on the first request
-            if (!server.isConnected()) {
-                console.error("[MCP] Connecting singleton server...");
-                await server.connect(transport);
-            }
-            console.error("[MCP] Calling transport.handleRequest...");
+            await server.connect(transport);
             await transport.handleRequest(req, res);
         }
         catch (error) {
@@ -162,6 +143,7 @@ async function main() {
             }
         }
     });
+    // Apply express.json() for other routes
     app.use(express.json());
     app.get("/healthz", (req, res) => {
         res.status(200).json({ status: "ok" });
