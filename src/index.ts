@@ -167,20 +167,26 @@ async function main() {
      * are automatically assigned to a default session, preventing 400 errors.
      */
     const sessionMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        console.error(`[SESSION] Incoming headers: ${JSON.stringify(req.headers)}`);
         if (!req.headers["mcp-session-id"]) {
+            console.error("[SESSION] Injecting default session ID");
             // Use a stable ID for stateless clients to reuse the same "virtual" session
             req.headers["mcp-session-id"] = "stateless-session-common";
         }
+        console.error(`[SESSION] Final headers: ${JSON.stringify(req.headers)}`);
         next();
     };
 
     // MCP Route Handler using Singleton Transport with Lazy Connection
     app.all("/mcp", sessionMiddleware, async (req, res) => {
+        console.error(`[MCP] Request headers in handler: ${JSON.stringify(req.headers)}`);
         try {
             // Lazy connect the server to the transport on the first request
             if (!server.isConnected()) {
+                console.error("[MCP] Connecting singleton server...");
                 await server.connect(transport);
             }
+            console.error("[MCP] Calling transport.handleRequest...");
             await transport.handleRequest(req, res);
         } catch (error) {
             console.error("[MCP] Transport Error:", error);
